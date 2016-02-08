@@ -1,0 +1,13 @@
+Index: galera-3-25.3.12/SConstruct
+===================================================================
+--- galera-3-25.3.12.orig/SConstruct
++++ galera-3-25.3.12/SConstruct
+@@ -107,7 +107,7 @@ elif machine == 's390x':
+     if bits == 32:
+         compile_arch += ' -m32'
+ else:
+-    compile_arch = ' -mtune=native'
++    compile_arch = ''
+     link_arch    = ''
+ 
+ 

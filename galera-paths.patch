@@ -1,0 +1,72 @@
+diff -rup --no-dereference galera-3-25.3.12orig/garb/files/garb.service galera-3-25.3.12/garb/files/garb.service
+--- galera-3-25.3.12orig/garb/files/garb.service	2016-02-09 10:30:06.221337159 +0100
++++ galera-3-25.3.12/garb/files/garb.service	2016-02-09 16:59:38.968399337 +0100
+@@ -10,8 +10,8 @@ Alias=garbd.service
+ 
+ [Service]
+ User=nobody
+-EnvironmentFile=/etc/sysconfig/garb
+-ExecStart=/usr/bin/garb-systemd start
++EnvironmentFile=@sysconfdir@/sysconfig/garb
++ExecStart=@bindir@/garbd-systemd start
+ 
+ # Use SIGINT because with the default SIGTERM
+ # garbd fails to reliably transition to 'destroyed' state
+diff -rup --no-dereference galera-3-25.3.12orig/garb/files/garb.sh galera-3-25.3.12/garb/files/garb.sh
+--- galera-3-25.3.12orig/garb/files/garb.sh	2016-02-09 10:30:06.221337159 +0100
++++ galera-3-25.3.12/garb/files/garb.sh	2016-02-09 17:05:40.901647685 +0100
+@@ -5,7 +5,7 @@
+ # init.d script for garbd
+ #
+ # chkconfig: - 99 01
+-# config: /etc/sysconfig/garb | /etc/default/garb
++# config: @sysconfdir@/sysconfig/garb | @sysconfdir@/default/garb
+ 
+ ### BEGIN INIT INFO
+ # Provides:          garb
+@@ -29,10 +29,10 @@ _SYSTEMCTL_SKIP_REDIRECT=true
+ if [ -f /etc/redhat-release ]; then
+ 	. /etc/init.d/functions
+ 	. /etc/sysconfig/network
+-	config=/etc/sysconfig/garb
++	config=@sysconfdir@/sysconfig/garb
+ else
+ 	. /lib/lsb/init-functions
+-	config=/etc/default/garb
++	config=@sysconfdir@/default/garb
+ fi
+ 
+ log_failure() {
+@@ -45,9 +45,9 @@ log_failure() {
+ 	fi
+ }
+ 
+-PIDFILE=/var/run/garbd
++PIDFILE=/var/run/@scl_prefix@garbd
+ 
+-prog=$(which garbd)
++prog="scl enable @scl@ -- $(which garbd)"
+ 
+ program_start() {
+ 	local rcode
+diff -rup --no-dereference galera-3-25.3.12orig/garb/files/garb-systemd galera-3-25.3.12/garb/files/garb-systemd
+--- galera-3-25.3.12orig/garb/files/garb-systemd	2016-02-09 10:30:06.221337159 +0100
++++ galera-3-25.3.12/garb/files/garb-systemd	2016-02-09 17:06:20.228659893 +0100
+@@ -2,7 +2,7 @@
+ #
+ 
+ 
+-config=/etc/sysconfig/garb
++config=@sysconfdir@/sysconfig/garb
+ 
+ log_failure() {
+     echo " ERROR! $@"
+@@ -12,7 +12,7 @@ log_failure() {
+ 
+ program_start() {
+ 	echo "Starting garbd"
+-        /usr/bin/garbd "$@"
++        scl enable @scl@ -- @bindir@/garbd "$@"
+ }
+ 
+ 

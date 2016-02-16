@@ -3,17 +3,15 @@
 
 Name:           %{?scl_prefix}galera
 Version:        25.3.12
-Release:        4%{?dist}
+Release:        8%{?dist}
 Summary:        Synchronous multi-master wsrep provider (replication engine)
 
 License:        GPLv2
 URL:            http://galeracluster.com/
 Source0:        http://releases.galeracluster.com/source/%{pkg_name}-3-%{version}.tar.gz
 
-Source1:        garbd.service
-Source2:        garbd-wrapper
-
 Patch0:         kill-mtune-native.patch
+Patch1:         galera-paths.patch
 
 BuildRequires:  %{?scl_prefix}boost-devel check-devel openssl-devel %{?scl_prefix}scons
 
@@ -41,9 +39,19 @@ replication engine see http://www.codership.com.
 %prep
 %setup -q -n %{pkg_name}-3-%{version}
 %patch0 -p1
+%patch1 -p1
 
 %build
+for f in garb/files/garb.sh garb/files/garb.service garb/files/garb-systemd ; do
+  sed -i -e "s|@bindir@|%{_bindir}|g" \
+         -e "s|@sbindir@|%{_sbindir}|g" \
+         -e "s|@sysconfdir@|%{_sysconfdir}|g" \
+         -e "s|@scl@|%{scl}|g" \
+         -e "s|@scl_prefix@|%{scl_prefix}|g" $f
+done
+
 %{?scl:scl enable %{scl} - << "EOF"}
+set -xe
 export CPPFLAGS="%{optflags}"
 scons %{?_smp_mflags} strict_build_flags=0 extra_sysroot=%{_prefix} \
     bpostatic=%{_libdir}/libboost_program_options.so
@@ -52,13 +60,14 @@ scons %{?_smp_mflags} strict_build_flags=0 extra_sysroot=%{_prefix} \
 
 %install
 %{?scl:scl enable %{scl} - << "EOF"}
+set -xe
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
-install -D -m 644 %{SOURCE1} %{buildroot}%{_unitdir}/garbd.service
-install -D -m 755 %{SOURCE2} %{buildroot}%{_sbindir}/garbd-wrapper
+install -D -m 644 garb/files/garb.service %{buildroot}%{_unitdir}/%{?scl_prefix}garbd.service
+install -D -m 755 garb/files/garb-systemd %{buildroot}%{_bindir}/garbd-systemd
 %else
-install -D -m 755 garb/files/garb.sh %{buildroot}%{_initrddir}/garb
+install -D -m 755 garb/files/garb.sh %{buildroot}%{?scl:%_root_sysconfdir}%{!?scl:%_sysconfdir}/rc.d/init.d/%{?scl_prefix}garbd
 %endif
-install -D -m 755 garb/garbd %{buildroot}%{_sbindir}/garbd
+install -D -m 755 garb/garbd %{buildroot}%{_bindir}/garbd
 install -D -m 755 libgalera_smm.so %{buildroot}%{_libdir}/galera/libgalera_smm.so
 install -D -m 644 garb/files/garb.cnf %{buildroot}%{_sysconfdir}/sysconfig/garb
 install -D -m 644 COPYING %{buildroot}%{_docdir}/galera/COPYING
@@ -73,19 +82,19 @@ install -D -m 644 scripts/packages/README-MySQL %{buildroot}%{_docdir}/galera/RE
 %post
 /sbin/ldconfig
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
-%systemd_post garbd.service
+%systemd_post %{?scl_prefix}garbd.service
 %else
-/sbin/chkconfig --add garb
+/sbin/chkconfig --add %{?scl_prefix}garbd
 %endif
 
 
 %preun
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
-%systemd_preun garbd.service
+%systemd_preun %{?scl_prefix}garbd.service
 %else
 if [ "$1" -eq 0 ]; then
-    /sbin/service garb stop >/dev/null 2>&1
-    /sbin/chkconfig --del garb
+    /sbin/service %{?scl_prefix}garbd stop >/dev/null 2>&1
+    /sbin/chkconfig --del %{?scl_prefix}garbd
 fi
 %endif
 
@@ -93,10 +102,10 @@ fi
 %postun
 /sbin/ldconfig
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
-%systemd_postun_with_restart garbd.service
+%systemd_postun_with_restart %{?scl_prefix}garbd.service
 %else
 if [ "$1" -ge 1 ]; then
-    /sbin/service garb condrestart >/dev/null 2>&1 || :
+    /sbin/service %{?scl_prefix}garbd condrestart >/dev/null 2>&1 || :
 fi
 %endif
 
@@ -105,12 +114,12 @@ fi
 %config(noreplace,missingok) %{_sysconfdir}/sysconfig/garb
 %dir %{_docdir}/galera
 %dir %{_libdir}/galera
-%{_sbindir}/garbd
+%{_bindir}/garbd
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
-%{_sbindir}/garbd-wrapper
-%{_unitdir}/garbd.service
+%{_bindir}/garbd-systemd
+%{_unitdir}/%{?scl_prefix}garbd.service
 %else
-%{_initrddir}/garb
+%{?scl:%_root_sysconfdir}%{!?scl:%_sysconfdir}/rc.d/init.d/%{?scl_prefix}garbd
 %endif
 %{_libdir}/galera/libgalera_smm.so
 %doc %{_docdir}/galera/COPYING
@@ -121,6 +130,18 @@ fi
 %doc %{_docdir}/galera/README-MySQL
 
 %changelog
+* Thu Feb 11 2016 Honza Horak <hhorak@redhat.com> - 25.3.12-8
+- Rebuild with newer scl-utils
+
+* Tue Feb 09 2016 Honza Horak <hhorak@redhat.com> - 25.3.12-7
+- Change sysconfdir for scls
+
+* Tue Feb 09 2016 Honza Horak <hhorak@redhat.com> - 25.3.12-6
+- Fix typo in _syconfig macro
+
+* Tue Feb 09 2016 Honza Horak <hhorak@redhat.com> - 25.3.12-5
+- Prefix service name with SCL
+
 * Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 25.3.12-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
 

@@ -3,7 +3,7 @@
 
 Name:           %{?scl_prefix}galera
 Version:        25.3.12
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Synchronous multi-master wsrep provider (replication engine)
 
 License:        GPLv2
@@ -13,7 +13,12 @@ Source0:        http://releases.galeracluster.com/source/%{pkg_name}-3-%{version
 Patch0:         kill-mtune-native.patch
 Patch1:         galera-paths.patch
 
-BuildRequires:  %{?scl_prefix}boost-devel check-devel openssl-devel %{?scl_prefix}scons
+%if 0%{?rhel} < 7
+BuildRequires:  %{?scl_prefix}boost-devel
+%else
+BuildRequires:  boost-devel
+%endif
+BuildRequires:  check-devel openssl-devel %{?scl_prefix}scons
 
 
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
@@ -54,7 +59,9 @@ done
 set -xe
 export CPPFLAGS="%{optflags}"
 scons %{?_smp_mflags} strict_build_flags=0 extra_sysroot=%{_prefix} \
+%if 0%{?rhel} < 7
     bpostatic=%{_libdir}/libboost_program_options.so
+%endif
 
 %{?scl:EOF}
 
@@ -130,6 +137,10 @@ fi
 %doc %{_docdir}/galera/README-MySQL
 
 %changelog
+* Thu Apr 21 2016 Honza Horak <hhorak@redhat.com>
+- Build with system boost in RHEL-7
+  Resolves: #1329175
+
 * Thu Feb 11 2016 Honza Horak <hhorak@redhat.com> - 25.3.12-8
 - Rebuild with newer scl-utils
 

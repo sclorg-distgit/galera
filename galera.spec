@@ -9,7 +9,7 @@
 
 Name:           %{?scl_prefix}galera
 Version:        25.3.20
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Synchronous multi-master wsrep provider (replication engine)
 
 License:        GPLv2
@@ -17,6 +17,7 @@ URL:            http://galeracluster.com/
 Source0:        http://releases.galeracluster.com/source/%{pkg_name}-%{version}.tar.gz
 
 Patch1:         galera-paths.patch
+Patch2:         galera-init-start.patch
 
 %if 0%{?rhel} < 7
 BuildRequires:  %{?scl_prefix}boost-devel
@@ -49,6 +50,7 @@ replication engine see http://www.codership.com.
 %prep
 %setup -q -n %{pkg_name}-%{version}
 %patch1 -p1 -b .p2
+%patch2 -p1
 
 %build
 for f in garb/files/garb.sh garb/files/garb.service garb/files/garb-systemd ; do
@@ -163,6 +165,10 @@ fi
 %doc %{_docdir}/galera/README-MySQL
 
 %changelog
+* Wed Aug 09 2017 Honza Horak <hhorak@redhat.com> - 25.3.20-3
+- Fix wrong failure reporting during init script start
+  Related: #1415720
+
 * Mon Jun 26 2017 Honza Horak <hhorak@redhat.com> - 25.3.20-2
 - Fix paths in garpd init script and turn on SCL there
   Related: #1415720

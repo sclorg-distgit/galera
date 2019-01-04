@@ -9,7 +9,7 @@
 
 Name:           %{?scl_prefix}galera
 Version:        25.3.20
-Release:        3%{?dist}
+Release:        3.bs1%{?dist}
 Summary:        Synchronous multi-master wsrep provider (replication engine)
 
 License:        GPLv2

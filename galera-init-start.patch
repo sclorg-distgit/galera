@@ -1,0 +1,19 @@
+Service start reported failure even in case of proper start. It was probably
+caused by race condition when the forked process was not ready yet.
+Giving an extra second should do the same trick as in case of debian start
+script (see different branch in the same function).
+
+RHBZ: #1466473
+
+diff -up galera-3-25.3.12/garb/files/garb.sh.pstart galera-3-25.3.12/garb/files/garb.sh
+--- galera-3-25.3.12/garb/files/garb.sh.pstart	2017-07-18 12:41:43.411222266 +0200
++++ galera-3-25.3.12/garb/files/garb.sh	2017-07-18 12:41:19.559168772 +0200
+@@ -55,6 +55,8 @@ program_start() {
+ 		echo -n $"Starting $prog: "
+ 		daemon --user nobody $prog "$@" >/dev/null
+ 		rcode=$?
++		# Hack: sleep a bit to give garbd some time to fork
++		sleep 2
+ 		if [ $rcode -eq 0 ]; then
+ 			pidof $prog > $PIDFILE || rcode=$?
+ 		fi

@@ -1,0 +1,90 @@
+diff -up galera-26.4.6/garb/files/garb.service.p2 galera-26.4.6/garb/files/garb.service
+--- galera-26.4.6/garb/files/garb.service.p2	2021-01-04 16:45:52.260966357 +0100
++++ galera-26.4.6/garb/files/garb.service	2021-01-04 16:46:50.010572463 +0100
+@@ -12,7 +12,7 @@ Alias=garbd.service
+ 
+ [Service]
+ User=nobody
+-ExecStart=/usr/bin/garb-systemd start
++ExecStart=@bindir@/garb-systemd start
+ 
+ # Use SIGINT because with the default SIGTERM
+ # garbd fails to reliably transition to 'destroyed' state
+diff -up galera-26.4.6/garb/files/garb.sh.p2 galera-26.4.6/garb/files/garb.sh
+--- galera-26.4.6/garb/files/garb.sh.p2	2020-10-22 12:19:37.000000000 +0200
++++ galera-26.4.6/garb/files/garb.sh	2021-01-04 16:42:19.943738004 +0100
+@@ -5,7 +5,7 @@
+ # init.d script for garbd
+ #
+ # chkconfig: - 99 01
+-# config: /etc/sysconfig/garb | /etc/default/garb
++# config: @sysconfdir@/sysconfig/garb | @sysconfdir@/default/garb
+ 
+ ### BEGIN INIT INFO
+ # Provides:          garb
+@@ -25,10 +25,10 @@
+ if [ -f /etc/redhat-release ]; then
+ 	. /etc/init.d/functions
+ 	. /etc/sysconfig/network
+-	config=/etc/sysconfig/garb
++	config=@sysconfdir@/sysconfig/garb
+ else
+ 	. /lib/lsb/init-functions
+-	config=/etc/default/garb
++	config=@sysconfdir@/default/garb
+ fi
+ 
+ log_failure() {
+@@ -41,9 +41,9 @@ log_failure() {
+ 	fi
+ }
+ 
+-PIDFILE=/var/run/garbd
++PIDFILE=/var/run/@scl_prefix@garbd
+ 
+-prog=$(which garbd)
++prog="$(scl enable @scl@ -- which garbd)"
+ 
+ program_start() {
+ 	local rcode
+@@ -150,6 +150,19 @@ restart() {
+ 	start
+ }
+ 
++# We have to re-enable SCL environment, because /sbin/service
++# clears almost all environment variables.
++# Since X_SCLS is cleared as well, we lose information about other
++# collections enabled.
++source @scl_scripts@/garbd-service-environment
++source scl_source enable $@scl_upper@_SCLS_ENABLED
++
++# we want start daemon only inside "scl enable" invocation
++if ! scl_enabled @scl@ ; then
++    echo "Collection @scl@ has to be listed in @scl_scripts@/garbd-service-environment"
++    exit 1
++fi
++
+ # See how we were called.
+ case "$1" in
+   start)
+diff -up galera-26.4.6/garb/files/garb-systemd.p2 galera-26.4.6/garb/files/garb-systemd
+--- galera-26.4.6/garb/files/garb-systemd.p2	2021-01-04 16:42:19.943738004 +0100
++++ galera-26.4.6/garb/files/garb-systemd	2021-01-04 16:44:07.793869930 +0100
+@@ -4,7 +4,7 @@
+ if [[ -f /etc/debian_version ]]; then
+   config=/etc/default/garb
+ else
+-  config=/etc/sysconfig/garb
++  config=@sysconfdir@/sysconfig/garb
+ fi
+ 
+ log_failure() {
+@@ -13,7 +13,7 @@ log_failure() {
+ 
+ program_start() {
+   echo "Starting garbd"
+-  /usr/bin/garbd "$@"
++  scl enable @scl@ -- @bindir@/garbd "$@"
+ }
+ 
+ start() {
